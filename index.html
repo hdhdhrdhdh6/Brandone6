@@ -1,161 +1,150 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Spin Art</title>
 <style>
 body {
-  margin: 0;
-  background: #222;
-  color: white;
-  font-family: sans-serif;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
+  margin:0;
+  background:#111;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  height:100vh;
+  overflow:hidden;
+  font-family:sans-serif;
 }
 
 canvas {
-  background: white;
-  border-radius: 50%;
-  box-shadow: 0 0 25px black;
-  touch-action: none;
+  width:90vw;
+  height:90vw;
+  max-width:600px;
+  max-height:600px;
+  background:white;
+  border-radius:50%;
+  touch-action:none;
 }
 
 .controls {
-  margin-top: 15px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
+  margin-top:10px;
+}
+
+button, input {
+  font-size:18px;
+  margin:3px;
 }
 </style>
 </head>
 
 <body>
 
-<canvas id="canvas" width="600" height="600"></canvas>
+<canvas id="art" width="600" height="600"></canvas>
 
 <div class="controls">
-  <input type="color" id="color" value="#ff0066">
-  <input type="range" id="brush" min="2" max="40" value="10">
-  <button id="spin">Spin</button>
-  <button id="stop">Stop</button>
-  <button id="clear">Clear</button>
-  <button id="save">Save</button>
+<input type="color" id="color" value="#ff0066">
+<input type="range" id="brush" min="5" max="50" value="15">
+<button onclick="startSpin()">Spin</button>
+<button onclick="stopSpin()">Stop</button>
+<button onclick="wipe()">Clear</button>
 </div>
 
 <script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+var canvas=document.getElementById("art");
+var ctx=canvas.getContext("2d");
 
-const color = document.getElementById("color");
-const brush = document.getElementById("brush");
+var paint=document.createElement("canvas");
+paint.width=600;
+paint.height=600;
+var pctx=paint.getContext("2d");
 
-let drawing = false;
-let rotation = 0;
-let spinning = false;
+pctx.fillStyle="white";
+pctx.fillRect(0,0,600,600);
 
-const center = canvas.width / 2;
+var spinning=false;
+var rotation=0;
+var down=false;
 
-let art = document.createElement("canvas");
-art.width = canvas.width;
-art.height = canvas.height;
-let artCtx = art.getContext("2d");
-
-function clear() {
-  artCtx.fillStyle = "white";
-  artCtx.fillRect(0,0,art.width,art.height);
-  redraw();
-}
-
-function redraw() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  ctx.save();
-  ctx.translate(center, center);
-  ctx.rotate(rotation);
-  ctx.drawImage(art, -center, -center);
-  ctx.restore();
-}
-
-function draw(x,y) {
-  artCtx.beginPath();
-  artCtx.arc(x,y,brush.value/2,0,Math.PI*2);
-  artCtx.fillStyle=color.value;
-  artCtx.fill();
-
-  // mirrored spin-art effect
-  for(let i=1;i<12;i++){
-    let a=(Math.PI*2/12)*i;
-    let dx=x-center;
-    let dy=y-center;
-
-    let nx=center + dx*Math.cos(a)-dy*Math.sin(a);
-    let ny=center + dx*Math.sin(a)+dy*Math.cos(a);
-
-    artCtx.beginPath();
-    artCtx.arc(nx,ny,brush.value/2,0,Math.PI*2);
-    artCtx.fill();
-  }
-
-  redraw();
-}
-
-function pointer(e) {
-  const r=canvas.getBoundingClientRect();
+function getPos(e){
+  var r=canvas.getBoundingClientRect();
   return {
-    x:e.clientX-r.left,
-    y:e.clientY-r.top
+    x:(e.touches[0].clientX-r.left)*600/r.width,
+    y:(e.touches[0].clientY-r.top)*600/r.height
   };
 }
 
-canvas.addEventListener("pointerdown", e=>{
-  drawing=true;
-  let p=pointer(e);
-  draw(p.x,p.y);
-});
+function dot(x,y){
+  var size=document.getElementById("brush").value;
+  var col=document.getElementById("color").value;
 
-canvas.addEventListener("pointermove", e=>{
-  if(!drawing) return;
-  let p=pointer(e);
-  draw(p.x,p.y);
-});
+  pctx.fillStyle=col;
 
-window.addEventListener("pointerup",()=>{
-  drawing=false;
-});
+  for(var i=0;i<12;i++){
+    var a=i*Math.PI*2/12;
+    var dx=x-300;
+    var dy=y-300;
 
-document.getElementById("spin").onclick=()=>{
-  spinning=true;
-};
+    var nx=300+dx*Math.cos(a)-dy*Math.sin(a);
+    var ny=300+dx*Math.sin(a)+dy*Math.cos(a);
 
-document.getElementById("stop").onclick=()=>{
-  spinning=false;
-};
-
-document.getElementById("clear").onclick=()=>{
-  clear();
-};
-
-document.getElementById("save").onclick=()=>{
-  let link=document.createElement("a");
-  link.download="spin-art.png";
-  link.href=art.toDataURL();
-  link.click();
-};
-
-function loop(){
-  if(spinning){
-    rotation += 0.03;
-    redraw();
+    pctx.beginPath();
+    pctx.arc(nx,ny,size/2,0,Math.PI*2);
+    pctx.fill();
   }
-  requestAnimationFrame(loop);
+
+  redraw();
 }
 
-clear();
-loop();
+function redraw(){
+  ctx.clearRect(0,0,600,600);
+  ctx.save();
+  ctx.translate(300,300);
+  ctx.rotate(rotation);
+  ctx.drawImage(paint,-300,-300);
+  ctx.restore();
+}
+
+canvas.addEventListener("touchstart",function(e){
+  e.preventDefault();
+  down=true;
+  dot(getPos(e).x,getPos(e).y);
+},{passive:false});
+
+canvas.addEventListener("touchmove",function(e){
+  e.preventDefault();
+  if(down){
+    dot(getPos(e).x,getPos(e).y);
+  }
+},{passive:false});
+
+canvas.addEventListener("touchend",function(){
+  down=false;
+});
+
+function startSpin(){
+  spinning=true;
+}
+
+function stopSpin(){
+  spinning=false;
+}
+
+function wipe(){
+  pctx.fillStyle="white";
+  pctx.fillRect(0,0,600,600);
+  redraw();
+}
+
+function animate(){
+  if(spinning){
+    rotation+=0.04;
+    redraw();
+  }
+  requestAnimationFrame(animate);
+}
+
+redraw();
+animate();
 </script>
 
 </body>
