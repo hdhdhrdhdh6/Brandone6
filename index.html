@@ -2,58 +2,44 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Spin Art Game</title>
+<title>Spin Art</title>
 <style>
-  body {
-    margin: 0;
-    height: 100vh;
-    background: #111;
-    color: white;
-    font-family: system-ui, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-  }
+body {
+  margin: 0;
+  background: #222;
+  color: white;
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
 
-  canvas {
-    background: white;
-    border-radius: 50%;
-    box-shadow: 0 0 30px #000;
-    cursor: crosshair;
-  }
+canvas {
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 0 25px black;
+  touch-action: none;
+}
 
-  .controls {
-    margin-top: 15px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
-
-  button, input {
-    font-size: 16px;
-    padding: 8px;
-  }
-
-  button {
-    cursor: pointer;
-  }
+.controls {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
 </style>
 </head>
+
 <body>
 
-<canvas id="art" width="600" height="600"></canvas>
+<canvas id="canvas" width="600" height="600"></canvas>
 
 <div class="controls">
-  <label>
-    Color:
-    <input type="color" id="color" value="#ff0055">
-  </label>
-  <label>
-    Brush:
-    <input type="range" id="size" min="2" max="30" value="8">
-  </label>
+  <input type="color" id="color" value="#ff0066">
+  <input type="range" id="brush" min="2" max="40" value="10">
   <button id="spin">Spin</button>
   <button id="stop">Stop</button>
   <button id="clear">Clear</button>
@@ -61,108 +47,115 @@
 </div>
 
 <script>
-const canvas = document.getElementById("art");
+const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 const color = document.getElementById("color");
-const size = document.getElementById("size");
-
-const cx = canvas.width / 2;
-const cy = canvas.height / 2;
-const radius = canvas.width / 2;
+const brush = document.getElementById("brush");
 
 let drawing = false;
-let angle = 0;
-let speed = 0.08;
+let rotation = 0;
 let spinning = false;
-let points = [];
 
-function clearCanvas() {
-  ctx.fillStyle = "white";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  points = [];
+const center = canvas.width / 2;
+
+let art = document.createElement("canvas");
+art.width = canvas.width;
+art.height = canvas.height;
+let artCtx = art.getContext("2d");
+
+function clear() {
+  artCtx.fillStyle = "white";
+  artCtx.fillRect(0,0,art.width,art.height);
+  redraw();
 }
 
-clearCanvas();
+function redraw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-function drawDot(x, y, a) {
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(a);
-
-  ctx.beginPath();
-  ctx.arc(x - cx, y - cy, size.value / 2, 0, Math.PI * 2);
-  ctx.fillStyle = color.value;
-  ctx.globalAlpha = 0.8;
-  ctx.fill();
-
+  ctx.translate(center, center);
+  ctx.rotate(rotation);
+  ctx.drawImage(art, -center, -center);
   ctx.restore();
 }
 
-canvas.addEventListener("mousedown", e => {
-  drawing = true;
-  addPoint(e);
-});
+function draw(x,y) {
+  artCtx.beginPath();
+  artCtx.arc(x,y,brush.value/2,0,Math.PI*2);
+  artCtx.fillStyle=color.value;
+  artCtx.fill();
 
-canvas.addEventListener("mouseup", () => drawing = false);
-canvas.addEventListener("mouseleave", () => drawing = false);
+  // mirrored spin-art effect
+  for(let i=1;i<12;i++){
+    let a=(Math.PI*2/12)*i;
+    let dx=x-center;
+    let dy=y-center;
 
-canvas.addEventListener("mousemove", e => {
-  if (drawing) addPoint(e);
-});
+    let nx=center + dx*Math.cos(a)-dy*Math.sin(a);
+    let ny=center + dx*Math.sin(a)+dy*Math.cos(a);
 
-function addPoint(e) {
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-
-  const dx = x - cx;
-  const dy = y - cy;
-
-  if (Math.sqrt(dx*dx + dy*dy) < radius) {
-    points.push({x, y});
-    drawDot(x, y, angle);
-  }
-}
-
-function animate() {
-  if (spinning) {
-    angle += speed;
-
-    clearCanvas();
-
-    points.forEach(p => {
-      for (let i = 0; i < 12; i++) {
-        drawDot(
-          p.x,
-          p.y,
-          angle + (Math.PI * 2 / 12) * i
-        );
-      }
-    });
+    artCtx.beginPath();
+    artCtx.arc(nx,ny,brush.value/2,0,Math.PI*2);
+    artCtx.fill();
   }
 
-  requestAnimationFrame(animate);
+  redraw();
 }
 
-animate();
+function pointer(e) {
+  const r=canvas.getBoundingClientRect();
+  return {
+    x:e.clientX-r.left,
+    y:e.clientY-r.top
+  };
+}
 
-document.getElementById("spin").onclick = () => {
-  spinning = true;
+canvas.addEventListener("pointerdown", e=>{
+  drawing=true;
+  let p=pointer(e);
+  draw(p.x,p.y);
+});
+
+canvas.addEventListener("pointermove", e=>{
+  if(!drawing) return;
+  let p=pointer(e);
+  draw(p.x,p.y);
+});
+
+window.addEventListener("pointerup",()=>{
+  drawing=false;
+});
+
+document.getElementById("spin").onclick=()=>{
+  spinning=true;
 };
 
-document.getElementById("stop").onclick = () => {
-  spinning = false;
+document.getElementById("stop").onclick=()=>{
+  spinning=false;
 };
 
-document.getElementById("clear").onclick = clearCanvas;
+document.getElementById("clear").onclick=()=>{
+  clear();
+};
 
-document.getElementById("save").onclick = () => {
-  const link = document.createElement("a");
-  link.download = "spin-art.png";
-  link.href = canvas.toDataURL();
+document.getElementById("save").onclick=()=>{
+  let link=document.createElement("a");
+  link.download="spin-art.png";
+  link.href=art.toDataURL();
   link.click();
 };
+
+function loop(){
+  if(spinning){
+    rotation += 0.03;
+    redraw();
+  }
+  requestAnimationFrame(loop);
+}
+
+clear();
+loop();
 </script>
 
 </body>
